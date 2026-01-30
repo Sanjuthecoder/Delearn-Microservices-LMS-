@@ -63,7 +63,7 @@ export default function AdminSidebar({ activeSection, setActiveSection, mobileOp
             <Box sx={{ p: 3, textAlign: 'center', borderBottom: '1px solid #f3f4f6' }}>
                 <img
                     src="/logo.jpeg"
-                    alt="SkillNetra"
+                    alt="DLMS Admin"
                     style={{
                         width: '140px',
                         height: 'auto',

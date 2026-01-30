@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import api from '../../Service/api';
 import {
     Button,
     TextField,
@@ -136,6 +137,12 @@ export default function AddCourseModal({ open, onClose, onCourseAdded, courseToE
 
     // --- Media Upload ---
 
+    // --- Media Upload ---
+
+    // ... (rest of imports)
+
+    // --- Media Upload ---
+
     const handleFileUpload = async (mIndex, lIndex, file) => {
         if (!file) return;
 
@@ -148,22 +155,18 @@ export default function AddCourseModal({ open, onClose, onCourseAdded, courseToE
         uploadData.append('file', file);
 
         try {
-            const token = localStorage.getItem('token');
             const userRole = localStorage.getItem('role');
-            const response = await fetch('http://localhost:8080/api/media/upload', {
-                method: 'POST',
+            // Use api.post for automatic auth and gateway routing
+            const response = await api.post('/api/media/upload', uploadData, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
                     'X-User-Role': userRole || 'ADMIN'
-                },
-                body: uploadData
+                }
             });
 
-            if (!response.ok) throw new Error('Upload failed');
+            // Success (Axios resolves on 2xx)
+            const data = response.data;
 
-            const data = await response.json();
-
-            // Success
             const successModules = [...modules];
             successModules[mIndex].lessons[lIndex].mediaId = data.mediaId;
             successModules[mIndex].lessons[lIndex].uploadStatus = 'success';
@@ -200,35 +203,24 @@ export default function AddCourseModal({ open, onClose, onCourseAdded, courseToE
         console.log("Submitting Course Payload:", payload);
 
         const url = courseToEdit
-            ? `http://localhost:8080/api/courses/${courseToEdit.courseId}`
-            : 'http://localhost:8080/api/courses';
+            ? `/api/courses/${courseToEdit.id || courseToEdit.courseId}` // Use ID if available
+            : '/api/courses';
 
-        const method = courseToEdit ? 'PUT' : 'POST';
+        const apiCall = courseToEdit
+            ? api.put(url, payload)
+            : api.post(url, payload);
 
-        fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify(payload)
-        })
+        apiCall
             .then(res => {
-                if (!res.ok) {
-                    return res.text().then(text => { throw new Error(text || `Failed to ${courseToEdit ? 'update' : 'create'} course`) });
-                }
-                return res.json();
-            })
-            .then(data => {
                 setLoading(false);
-                console.log(`Course ${courseToEdit ? 'Updated' : 'Created'}:`, data);
+                console.log(`Course ${courseToEdit ? 'Updated' : 'Created'}:`, res.data);
                 onCourseAdded();
                 onClose();
             })
             .catch(err => {
                 console.error(err);
                 setLoading(false);
-                alert(`Failed to ${courseToEdit ? 'update' : 'create'} course. ` + err.message);
+                alert(`Failed to ${courseToEdit ? 'update' : 'create'} course. ` + (err.response?.data?.message || err.message));
             });
     };
 

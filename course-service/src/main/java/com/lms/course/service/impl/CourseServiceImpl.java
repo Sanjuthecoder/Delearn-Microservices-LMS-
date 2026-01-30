@@ -7,6 +7,9 @@ import com.lms.course.mapper.CourseMapper;
 import com.lms.course.repository.CourseRepository;
 import com.lms.course.service.CourseService;
 import org.springframework.stereotype.Service;
+import com.lms.course.client.MediaClient;
+import com.lms.course.entity.CourseModule;
+import com.lms.course.entity.Lesson;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,9 +20,11 @@ import java.util.stream.Collectors;
 public class CourseServiceImpl implements CourseService {
 
     private final CourseRepository courseRepository;
+    private final MediaClient mediaClient;
 
-    public CourseServiceImpl(CourseRepository courseRepository) {
+    public CourseServiceImpl(CourseRepository courseRepository, MediaClient mediaClient) {
         this.courseRepository = courseRepository;
+        this.mediaClient = mediaClient;
     }
 
     @Override
@@ -37,23 +42,47 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    public Optional<CourseResponse> getCourseByCourseId(int courseId) {
-        return courseRepository.findByCourseId(courseId)
+    public Optional<CourseResponse> getCourseById(String courseId) {
+        return courseRepository.findById(courseId)
                 .map(CourseMapper::toResponse);
     }
 
     @Override
-    public boolean deleteCourse(int courseId) {
-        if (courseRepository.findByCourseId(courseId).isPresent()) {
-            courseRepository.deleteByCourseId(courseId);
+    public boolean deleteCourse(String courseId) {
+        Optional<Course> courseOptional = courseRepository.findById(courseId);
+        if (courseOptional.isPresent()) {
+            Course course = courseOptional.get();
+
+            // Delete associated media
+            if (course.getModules() != null) {
+                for (CourseModule module : course.getModules()) {
+                    if (module.getLessons() != null) {
+                        for (Lesson lesson : module.getLessons()) {
+                            if (lesson.getMediaId() != null && !lesson.getMediaId().isEmpty()) {
+                                try {
+                                    mediaClient.deleteMedia(lesson.getMediaId());
+                                    System.out.println("Deleted media: " + lesson.getMediaId());
+                                } catch (Exception e) {
+                                    System.err.println(
+                                            "Failed to delete media " + lesson.getMediaId() + ": " + e.getMessage());
+                                    // Continue deleting course even if media delete fails? Yes, to avoid
+                                    // inconsistency.
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            courseRepository.deleteById(courseId);
             return true;
         }
         return false;
     }
 
     @Override
-    public Course updateCourse(int courseId, CourseCreateRequest request) {
-        Optional<Course> courseOptional = courseRepository.findByCourseId(courseId);
+    public Course updateCourse(String courseId, CourseCreateRequest request) {
+        Optional<Course> courseOptional = courseRepository.findById(courseId);
         if (courseOptional.isPresent()) {
             Course existingCourse = courseOptional.get();
             // Map updates from request

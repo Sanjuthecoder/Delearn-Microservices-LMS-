@@ -50,7 +50,15 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getPath();
 
         // 1. Whiteliest Auth endpoints (Login/Signup)
-        if (path.startsWith("/api/auth")) {
+        // Allow specific auth endpoints, but SECURE /api/auth/users
+        if (path.equals("/api/auth/login") ||
+                path.equals("/api/auth/register") ||
+                path.equals("/api/auth/newUser")) {
+            return chain.filter(exchange);
+        }
+
+        // 2. Allow OPTIONS (CORS Pre-flight) requests
+        if (exchange.getRequest().getMethod().equals(org.springframework.http.HttpMethod.OPTIONS)) {
             return chain.filter(exchange);
         }
 

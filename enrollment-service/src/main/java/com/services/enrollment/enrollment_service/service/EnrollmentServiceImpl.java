@@ -42,7 +42,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     }
 
     @Override
-    public boolean markCourseComplete(String userId, Integer courseId) {
+    public boolean markCourseComplete(String userId, String courseId) {
         Optional<Enrollment> enrollmentOpt = enrollmentRepository.findByUserIdAndCourseId(userId, courseId);
         if (enrollmentOpt.isPresent()) {
             Enrollment enrollment = enrollmentOpt.get();
@@ -51,5 +51,23 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public Enrollment updateProgress(String userId, String courseId, List<String> completedLessons, Integer progress) {
+        Optional<Enrollment> enrollmentOpt = enrollmentRepository.findByUserIdAndCourseId(userId, courseId);
+        if (enrollmentOpt.isPresent()) {
+            Enrollment enrollment = enrollmentOpt.get();
+            enrollment.setCompletedLessons(completedLessons);
+            enrollment.setProgress(progress);
+
+            // Auto-mark as completed if progress reaches 100%
+            if (progress != null && progress >= 100) {
+                enrollment.setStatus("COMPLETED");
+            }
+
+            return enrollmentRepository.save(enrollment);
+        }
+        return null;
     }
 }

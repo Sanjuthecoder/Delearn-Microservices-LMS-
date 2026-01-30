@@ -4,8 +4,19 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public class CourseResponse {
+    private String id; // Mongo ID
     private int courseId;
     private String title;
+
+    // Getters and Setters
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
     private String description;
     private String fullDescription;
     private String duration;

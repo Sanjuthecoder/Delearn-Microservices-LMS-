@@ -34,148 +34,198 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
 const sidebarWidth = 320;
 
-// Helper to get consistent ID
-const getLessonId = (lesson) => lesson.id || lesson._id || lesson.lessonId;
+// Helper to get consistent ID with fallback for old data
+const getLessonId = (lesson, index) => {
+    if (lesson.id) return lesson.id;
+    if (lesson._id) return lesson._id;
+    if (lesson.lessonId) return lesson.lessonId;
+    // Fallback for legacy data (fixes "mark all complete" bug)
+    return `fallback-${index}-${lesson.title?.replace(/\s+/g, '-')}`;
+};
 
 export default function CoursePlayer() {
     const { courseId } = useParams();
     const navigate = useNavigate();
+
     const [course, setCourse] = useState(null);
     const [activeLesson, setActiveLesson] = useState(null);
     const [completedLessons, setCompletedLessons] = useState([]);
-    const [isSidebarOpen, setSidebarOpen] = useState(true);
+    const [progress, setProgress] = useState(0);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [showCongrats, setShowCongrats] = useState(false);
-    const [completionSent, setCompletionSent] = useState(false);
-    const [videoSource, setVideoSource] = useState('');
     const [loading, setLoading] = useState(true);
+    const [videoUrl, setVideoUrl] = useState('');
 
-    // Fetch Course Details
+    // Flatten all lessons from modules
+    const allLessons = course?.modules?.flatMap(m => m.lessons) || [];
+
+    // Fetch course details
     useEffect(() => {
+        if (!courseId) return;
+
         setLoading(true);
         api.get(`/api/courses/${courseId}`)
-            .then(res => {
-                console.log("Fetched Course Content:", res.data);
-                setCourse(res.data);
-                // Initialize active lesson
-                if (res.data.modules && res.data.modules.length > 0) {
-                    const firstModule = res.data.modules[0];
-                    if (firstModule.lessons && firstModule.lessons.length > 0) {
-                        setActiveLesson(firstModule.lessons[0]);
-                    }
+            .then(response => {
+                console.log('Fetched course:', response.data);
+                setCourse(response.data);
+
+                // Set first lesson as active
+                if (response.data?.modules?.length > 0 && response.data.modules[0].lessons?.length > 0) {
+                    setActiveLesson(response.data.modules[0].lessons[0]);
                 }
+
                 setLoading(false);
             })
-            .catch(err => {
-                console.error("Failed to load course content:", err);
+            .catch(error => {
+                console.error('Failed to fetch course:', error);
                 setLoading(false);
             });
     }, [courseId]);
 
-    const allLessons = course?.modules?.flatMap(m => m.lessons) || [];
-
-    // Fetch Video/Media
+    // Fetch video URL when active lesson changes
     useEffect(() => {
         if (activeLesson?.mediaId) {
-            if (activeLesson.mediaId.startsWith('http')) {
-                setVideoSource(activeLesson.mediaId);
-            } else {
-                api.get(`/api/media/${activeLesson.mediaId}`)
-                    .then(res => {
-                        console.log("Fetched Media URL:", res.data);
-                        setVideoSource(res.data);
-                    })
-                    .catch(err => {
-                        console.error("Failed to fetch media:", err);
-                    });
-            }
+            api.get(`/api/media/${activeLesson.mediaId}`)
+                .then(response => {
+                    console.log('Fetched video URL:', response.data);
+                    setVideoUrl(response.data);
+                })
+                .catch(error => {
+                    console.error('Failed to fetch video URL:', error);
+                    setVideoUrl('');
+                });
         } else {
-            setVideoSource('');
+            setVideoUrl('');
         }
     }, [activeLesson]);
 
-    const handleDownload = (mediaId, title, lessonId) => {
-        if (!mediaId) return;
-
-        // Mark as complete immediately when opening PDF/Download
-        if (lessonId && !completedLessons.includes(lessonId)) {
-            toggleComplete(lessonId);
-        }
-
-        // Use api.get to fetch as blob (authenticated)
-        api.get(`/api/media/${mediaId}`, { responseType: 'blob' })
-            .then(response => {
-                const url = window.URL.createObjectURL(new Blob([response.data]));
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', title || `download-${mediaId}`);
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-            })
-            .catch(err => console.error("Download failed:", err));
-    };
-
-    // Check for completion
+    // Load completed lessons from enrollment on mount
     useEffect(() => {
-        if (allLessons.length > 0 && completedLessons.length === allLessons.length && !completionSent) {
-            handleCourseCompletion();
-        }
-    }, [completedLessons, allLessons, completionSent]);
-
-    const handleCourseCompletion = () => {
         const userId = localStorage.getItem('userId');
-        if (!userId) return;
+        if (userId && courseId) {
+            api.get(`/api/enrollments?userId=${userId}`)
+                .then(response => {
+                    if (response.data && response.data.length > 0) {
+                        // Find enrollment for this course
+                        const enrollment = response.data.find(e => e.courseId === courseId);
+                        if (enrollment) {
+                            setCompletedLessons(enrollment.completedLessons || []);
+                            setProgress(enrollment.progress || 0);
+                            console.log('Loaded progress from enrollment:', enrollment);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Failed to load enrollment progress:', error);
+                });
+        }
+    }, [courseId]);
 
-        const url = `http://localhost:8080/api/enrollments/complete?userId=${userId}&courseId=${courseId}`;
+    // Update progress when completed lessons change
+    useEffect(() => {
+        if (allLessons.length > 0) {
+            const progressPercent = Math.round((completedLessons.length / allLessons.length) * 100);
+            setProgress(progressPercent);
 
-        api.put(url, {})
-            .then(response => {
-                if (response.status === 200 || response.status === 201) {
-                    setCompletionSent(true);
-                    setShowCongrats(true);
-                }
-            })
-            .catch(error => {
-                console.error("Completion Request Failed:", error);
-            });
-    };
+            // Show congratulations if all lessons completed
+            if (progressPercent === 100 && completedLessons.length > 0) {
+                setShowCongrats(true);
+            }
+        }
+    }, [completedLessons, allLessons.length]);
 
-    const toggleSidebar = () => {
-        setSidebarOpen(!isSidebarOpen);
-    };
 
+    const currentIndex = allLessons.findIndex((l, idx) => getLessonId(l, idx) === getLessonId(activeLesson || {}, allLessons.indexOf(activeLesson)));
+
+    // Event Handlers
     const handleLessonChange = (lesson) => {
         setActiveLesson(lesson);
     };
 
     const toggleComplete = (lessonId) => {
-        if (completedLessons.includes(lessonId)) {
-            setCompletedLessons(completedLessons.filter(id => id !== lessonId));
-        } else {
-            setCompletedLessons([...completedLessons, lessonId]);
-        }
+        setCompletedLessons(prev => {
+            const newCompleted = prev.includes(lessonId)
+                ? prev.filter(id => id !== lessonId)
+                : [...prev, lessonId];
+
+            // Save progress to backend
+            const userId = localStorage.getItem('userId');
+            if (userId && courseId && allLessons.length > 0) {
+                const progressPercent = Math.round((newCompleted.length / allLessons.length) * 100);
+
+                api.put(`/api/enrollments/progress?userId=${userId}&courseId=${courseId}`, {
+                    completedLessons: newCompleted,
+                    progress: progressPercent
+                })
+                    .then(() => {
+                        console.log('Progress saved:', { completedLessons: newCompleted, progress: progressPercent });
+                    })
+                    .catch(error => {
+                        console.error('Failed to save progress:', error);
+                    });
+            }
+
+            return newCompleted;
+        });
     };
 
-    const currentIndex = allLessons.findIndex(l => getLessonId(l) === getLessonId(activeLesson || {}));
+    const toggleSidebar = () => {
+        setIsSidebarOpen(prev => !prev);
+    };
 
-    // Helper to Move Next
     const handleNext = () => {
         if (currentIndex < allLessons.length - 1) {
             setActiveLesson(allLessons[currentIndex + 1]);
         }
     };
+
     const handlePrev = () => {
         if (currentIndex > 0) {
             setActiveLesson(allLessons[currentIndex - 1]);
         }
     };
 
-    const progress = allLessons.length > 0 ? Math.round((completedLessons.length / allLessons.length) * 100) : 0;
+    const handleDownload = async (mediaId, title, lessonId) => {
+        if (!mediaId) {
+            alert('No downloadable resource available for this lesson.');
+            return;
+        }
+
+        try {
+            const downloadUrl = `http://localhost:8080/api/media/download/${mediaId}`;
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `${title}.mp4`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Download failed:', error);
+            alert('Failed to download the resource.');
+        }
+    };
+
+    if (loading) {
+        return (
+            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#0f172a' }}>
+                <Typography color="white">Loading course...</Typography>
+            </Box>
+        );
+    }
+
+    if (!course) {
+        return (
+            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2, bgcolor: '#0f172a' }}>
+                <Typography variant="h5" color="white">Course not found</Typography>
+                <Button variant="outlined" onClick={() => navigate('/student')}>Back to Dashboard</Button>
+            </Box>
+        );
+    }
+
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#0f172a' }}>
-
-            {/* Top Bar */}
+            {/* Top Bar (unchanged) */}
             <AppBar position="static" sx={{ bgcolor: '#1e293b', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                 <Toolbar variant="dense">
                     <Button
@@ -201,37 +251,62 @@ export default function CoursePlayer() {
             <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
 
                 {/* Left: Video Area (Grows) */}
-                <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', bgcolor: 'black', position: 'relative' }}>
-                    {/* Fixed: Absolute positioning for iframe to fill container */}
-                    <Box sx={{ flexGrow: 1, position: 'relative', width: '100%', height: '100%' }}>
+                <Box sx={{
+                    flexGrow: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    bgcolor: 'black',
+                    position: 'relative',
+                    overflow: 'hidden' // Ensure no scrollbars
+                }}>
+                    {/* Video Container - Fills available space */}
+                    <Box sx={{
+                        flexGrow: 1,
+                        position: 'relative',
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'stretch',
+                        justifyContent: 'stretch',
+                        bgcolor: 'black'
+                    }}>
                         {activeLesson ? (
                             <iframe
-                                src={videoSource}
+                                src={videoUrl}
                                 title={activeLesson.title}
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                 allowFullScreen
                                 style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
                                     width: '100%',
                                     height: '100%',
-                                    border: 'none'
+                                    border: 'none',
+                                    display: 'block'
                                 }}
                             ></iframe>
                         ) : (
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                                <Typography color="white">Select a lesson to start</Typography>
-                            </Box>
+                            <Typography color="white">Select a lesson to start</Typography>
                         )}
                     </Box>
 
-                    {/* Bottom Controls */}
-                    <Box sx={{ p: 2, bgcolor: '#1e293b', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                    {/* Bottom Controls - Sticky at bottom of video area */}
+                    <Box sx={{
+                        p: 2,
+                        bgcolor: '#1e293b',
+                        color: 'white',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexShrink: 0,
+                        borderTop: '1px solid rgba(255,255,255,0.1)'
+                    }}>
                         <Box>
-                            <Typography variant="subtitle1" fontWeight={600}>{activeLesson?.title}</Typography>
-                            <Typography variant="caption" sx={{ opacity: 0.7 }}>Lesson {currentIndex + 1} of {allLessons.length}</Typography>
+                            <Typography variant="subtitle1" fontWeight={600}>
+                                {activeLesson?.title || "No Lesson Selected"}
+                            </Typography>
+                            <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                                Lesson {(currentIndex !== -1 ? currentIndex : 0) + 1} of {allLessons.length}
+                            </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             <Button
@@ -258,6 +333,8 @@ export default function CoursePlayer() {
                     </Box>
                 </Box>
 
+                {/* Right Sidebar logic remains... */}
+
                 {/* Right: Sidebar / Playlist */}
                 {isSidebarOpen && (
                     <Box sx={{
@@ -277,77 +354,83 @@ export default function CoursePlayer() {
                         </Box>
 
                         <Box sx={{ overflowY: 'auto', flexGrow: 1 }}>
-                            {course?.modules.map((module, index) => (
-                                <Box key={index}>
-                                    <Typography sx={{
-                                        p: 2,
-                                        bgcolor: 'rgba(255,255,255,0.03)',
-                                        fontWeight: 700,
-                                        fontSize: '0.8rem',
-                                        color: '#cbd5e1',
-                                        letterSpacing: '0.5px'
-                                    }}>
-                                        {module.title}
-                                    </Typography>
-                                    <List disablePadding>
-                                        {module.lessons.map((lesson) => {
-                                            const lId = getLessonId(lesson);
-                                            const isActive = getLessonId(activeLesson || {}) === lId;
+                            {course?.modules.map((module, mIndex) => {
+                                // Calculate global index offset if needed, or just iterate linearly if allLessons is flat
+                                // For simplicity, we find the real index in allLessons
+                                return (
+                                    <Box key={mIndex}>
+                                        <Typography sx={{
+                                            p: 2,
+                                            bgcolor: 'rgba(255,255,255,0.03)',
+                                            fontWeight: 700,
+                                            fontSize: '0.8rem',
+                                            color: '#cbd5e1',
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                            {module.title}
+                                        </Typography>
+                                        <List disablePadding>
+                                            {module.lessons.map((lesson) => {
+                                                // Find the global index of this lesson
+                                                const globalIndex = allLessons.indexOf(lesson);
+                                                const lId = getLessonId(lesson, globalIndex);
+                                                const isActive = getLessonId(activeLesson || {}, allLessons.indexOf(activeLesson)) === lId;
 
-                                            return (
-                                                <ListItem key={lId} disablePadding>
-                                                    <ListItemButton
-                                                        selected={isActive}
-                                                        onClick={() => handleLessonChange(lesson)}
-                                                        sx={{
-                                                            pl: 3,
-                                                            borderLeft: isActive ? '3px solid #667eea' : '3px solid transparent',
-                                                            bgcolor: isActive ? 'rgba(102, 126, 234, 0.1)' : 'transparent',
-                                                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
-                                                            '&.Mui-selected': { bgcolor: 'rgba(102, 126, 234, 0.15)' }
-                                                        }}
-                                                    >
-                                                        <Checkbox
-                                                            edge="start"
-                                                            checked={completedLessons.includes(lId)}
-                                                            onChange={(e) => {
-                                                                e.stopPropagation();
-                                                                toggleComplete(lId);
+                                                return (
+                                                    <ListItem key={lId} disablePadding>
+                                                        <ListItemButton
+                                                            selected={isActive}
+                                                            onClick={() => handleLessonChange(lesson)}
+                                                            sx={{
+                                                                pl: 3,
+                                                                borderLeft: isActive ? '3px solid #667eea' : '3px solid transparent',
+                                                                bgcolor: isActive ? 'rgba(102, 126, 234, 0.1)' : 'transparent',
+                                                                '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
+                                                                '&.Mui-selected': { bgcolor: 'rgba(102, 126, 234, 0.15)' }
                                                             }}
-                                                            icon={<CheckCircleIcon sx={{ color: 'rgba(255,255,255,0.1)' }} />}
-                                                            checkedIcon={<CheckCircleIcon sx={{ color: '#10b981' }} />}
-                                                            size="small"
-                                                        />
-                                                        <ListItemText
-                                                            primary={lesson.title}
-                                                            secondary={lesson.duration}
-                                                            primaryTypographyProps={{
-                                                                color: isActive ? '#fff' : '#cbd5e1',
-                                                                fontWeight: isActive ? 600 : 400,
-                                                                fontSize: '0.9rem'
-                                                            }}
-                                                            secondaryTypographyProps={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem' }}
-                                                        />
-                                                        {lesson.mediaId && (
-                                                            <IconButton
-                                                                onClick={(e) => {
+                                                        >
+                                                            <Checkbox
+                                                                edge="start"
+                                                                checked={completedLessons.includes(lId)}
+                                                                onChange={(e) => {
                                                                     e.stopPropagation();
-                                                                    handleDownload(lesson.mediaId, lesson.title, lId);
+                                                                    toggleComplete(lId);
                                                                 }}
+                                                                icon={<CheckCircleIcon sx={{ color: 'rgba(255,255,255,0.1)' }} />}
+                                                                checkedIcon={<CheckCircleIcon sx={{ color: '#10b981' }} />}
                                                                 size="small"
-                                                                sx={{ color: 'rgba(255,255,255,0.5)', '&:hover': { color: '#667eea' }, mr: 1 }}
-                                                            >
-                                                                <FileDownloadIcon fontSize="small" />
-                                                            </IconButton>
-                                                        )}
-                                                        {isActive && <PlayCircleFilledIcon fontSize="small" sx={{ color: '#667eea' }} />}
-                                                    </ListItemButton>
-                                                </ListItem>
-                                            )
-                                        })}
-                                    </List>
-                                </Box>
-                            ))}
+                                                            />
+                                                            <ListItemText
+                                                                primary={lesson.title}
+                                                                secondary={lesson.duration}
+                                                                primaryTypographyProps={{
+                                                                    color: isActive ? '#fff' : '#cbd5e1',
+                                                                    fontWeight: isActive ? 600 : 400,
+                                                                    fontSize: '0.9rem'
+                                                                }}
+                                                                secondaryTypographyProps={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem' }}
+                                                            />
+                                                            {lesson.mediaId && (
+                                                                <IconButton
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDownload(lesson.mediaId, lesson.title, lId);
+                                                                    }}
+                                                                    size="small"
+                                                                    sx={{ color: 'rgba(255,255,255,0.5)', '&:hover': { color: '#667eea' }, mr: 1 }}
+                                                                >
+                                                                    <FileDownloadIcon fontSize="small" />
+                                                                </IconButton>
+                                                            )}
+                                                            {isActive && <PlayCircleFilledIcon fontSize="small" sx={{ color: '#667eea' }} />}
+                                                        </ListItemButton>
+                                                    </ListItem>
+                                                )
+                                            })}
+                                        </List>
+                                    </Box>
+                                )
+                            })}
                         </Box>
                     </Box>
                 )}

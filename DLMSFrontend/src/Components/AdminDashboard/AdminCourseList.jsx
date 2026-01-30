@@ -24,6 +24,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PersonIcon from '@mui/icons-material/Person';
 import AddCourseModal from './AddCourseModal';
+import api from '../../Service/api';
 import MediaUpload from './MediaUpload'; // Re-using for specific course media if needed, or just link
 
 export default function AdminCourseList() {
@@ -40,29 +41,24 @@ export default function AdminCourseList() {
     const [openViewDialog, setOpenViewDialog] = useState(false);
     const [courseToView, setCourseToView] = useState(null);
 
+    // ... (imports)
+
+    // ... (component)
+
     const fetchCourses = () => {
         setLoading(true);
-        // Using Gateway URL
-        fetch('http://localhost:8080/api/courses', {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-        })
+        // Using Gateway URL via api helper
+        api.get('/api/courses')
             .then(res => {
-                if (res.status === 401) throw new Error("Unauthorized: Please log in again.");
-                if (!res.ok) throw new Error("Failed to fetch");
-                return res.json();
-            })
-            .then(data => {
-                setCourses(data);
+                setCourses(res.data);
                 setLoading(false);
             })
             .catch(err => {
                 console.error("Error fetching courses:", err);
                 setLoading(false);
-                // Optional: Redirect to login if 401
-                if (err.message.includes("Unauthorized")) {
-                    // window.location.href = '/login'; 
+                // Optional: Redirect to login if 401 (handled by interceptor largely)
+                if (err.response && err.response.status === 401) {
+                    // navigate('/login'); // If navigation was imported
                 }
             });
     };
@@ -79,23 +75,21 @@ export default function AdminCourseList() {
     const confirmDelete = () => {
         if (!courseToDelete) return;
 
-        fetch(`http://localhost:8080/api/courses/${courseToDelete.courseId}`, {
-            method: 'DELETE',
-            // Add Authorization header if needed (e.g. Bearer token from localStorage)
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-        })
+        // Use api.delete (Interceptor handles auth)
+        api.delete(`/api/courses/${courseToDelete.id}`)
             .then(res => {
-                if (res.ok) {
-                    setCourses(courses.filter(c => c.courseId !== courseToDelete.courseId));
+                if (res.status === 200 || res.status === 204) {
+                    setCourses(courses.filter(c => c.id !== courseToDelete.id));
                     setOpenDeleteDialog(false);
                     setCourseToDelete(null);
                 } else {
-                    alert("Failed to delete course. Ensure backend supports DELETE.");
+                    alert("Failed to delete course.");
                 }
             })
-            .catch(err => console.error("Error deleting course:", err));
+            .catch(err => {
+                console.error("Error deleting course:", err);
+                alert("Failed to delete course: " + (err.response?.data?.message || err.message));
+            });
     };
 
     const handleViewClick = (course) => {
@@ -164,20 +158,42 @@ export default function AdminCourseList() {
                     <CircularProgress />
                 </Box>
             ) : (
-                <Grid container spacing={3} sx={{ pt: '120px' }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, pt: '120px' }}>
                     {courses.map(course => (
-                        <Grid item xs={12} sm={6} md={6} key={course.courseId}>
-                            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                                <CardContent sx={{ flexGrow: 1 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Box key={course.id || course.courseId} sx={{ flex: '1 1 300px', maxWidth: '380px', minWidth: '280px', width: { xs: '100%', sm: 'auto' } }}>
+                            <Card sx={{
+                                height: '100%',
+                                minHeight: '320px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                borderRadius: '12px',
+                                border: '1px solid #e5e7eb',
+                                boxShadow: 'none',
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    transform: 'translateY(-4px)',
+                                    boxShadow: '0 8px 16px rgba(102, 126, 234, 0.2)',
+                                    borderColor: '#667eea',
+                                }
+                            }}>
+                                <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
                                         <Chip
-                                            label={course.courseId}
+                                            label={`ID: ${course.courseId}`}
                                             size="small"
-                                            sx={{ bgcolor: '#f3f4f6', fontWeight: 600, color: '#6b7280' }}
+                                            sx={{ bgcolor: 'rgba(102, 126, 234, 0.1)', fontWeight: 600, color: '#667eea', fontSize: '0.7rem' }}
                                         />
                                         {/* Placeholder for difficulty/category if available */}
                                     </Box>
-                                    <Typography variant="h6" fontWeight={700} gutterBottom>
+                                    <Typography variant="h6" fontWeight={700} gutterBottom sx={{
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden',
+                                        lineHeight: 1.3,
+                                        minHeight: '2.6em',
+                                        mb: 1
+                                    }}>
                                         {course.title}
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary" sx={{
@@ -185,7 +201,8 @@ export default function AdminCourseList() {
                                         WebkitLineClamp: 3,
                                         WebkitBoxOrient: 'vertical',
                                         overflow: 'hidden',
-                                        mb: 2
+                                        mb: 2,
+                                        minHeight: '3.6em'
                                     }}>
                                         {course.description || "No description provided."}
                                     </Typography>
@@ -217,9 +234,9 @@ export default function AdminCourseList() {
                                     </Tooltip>
                                 </CardActions>
                             </Card>
-                        </Grid>
+                        </Box>
                     ))}
-                </Grid>
+                </Box>
             )}
 
             {/* Add/Edit Course Modal */}

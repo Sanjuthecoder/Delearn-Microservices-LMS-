@@ -2,7 +2,7 @@ package com.services.enrollment.enrollment_service.dto;
 
 public class EnrollmentRequest {
     private String userId;
-    private Integer courseId;
+    private String courseId;
 
     public String getUserId() {
         return userId;
@@ -12,11 +12,11 @@ public class EnrollmentRequest {
         this.userId = userId;
     }
 
-    public Integer getCourseId() {
+    public String getCourseId() {
         return courseId;
     }
 
-    public void setCourseId(Integer courseId) {
+    public void setCourseId(String courseId) {
         this.courseId = courseId;
     }
 }

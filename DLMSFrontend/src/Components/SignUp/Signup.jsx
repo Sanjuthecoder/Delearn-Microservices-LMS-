@@ -36,26 +36,15 @@ function Signup() {
 
     // --- Backend API Call ---
     try {
-      const response = await fetch("http://localhost:8080/api/auth/newUser", {
-        method: "POST",
-        body: JSON.stringify(signupData),
-        headers: {
-          "Content-Type": "application/json",
-        }
-      });
+      // Use api helper for consistent Gateway routing and interceptors
+      const response = await api.post('/api/auth/newUser', signupData);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        // This handles 4xx or 5xx responses from the server
-        throw new Error(data.message || 'Signup failed.');
+      if (response.status === 200 || response.status === 201) {
+        setSuccess("Account created successfully! Redirecting...");
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
       }
-
-      // Success!
-      console.log("Signup successful!", data);
-
-      // Optional: Store token or user data here
-      // localStorage.setItem('token', data.token); 
 
       // Navigate to the dashboard or login page
       navigate('/login');

@@ -26,20 +26,46 @@ public class EnrollmentController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Enrollment>> getUserEnrollments(@RequestParam String userId) {
-        // If courseId is passed, maybe filter? For now, list all.
-        // Wait, CourseCard uses "GET /api/enrollments?userId=...&courseId=..." to
-        // verify.
-        // Let's support that check.
-        return ResponseEntity.ok(enrollmentService.getUserEnrollments(userId));
+    public ResponseEntity<List<Enrollment>> getUserEnrollments(
+            @RequestParam String userId,
+            @RequestParam(required = false) String courseId) {
+
+        List<Enrollment> enrollments = enrollmentService.getUserEnrollments(userId);
+
+        // If courseId is provided, filter to check if user is enrolled in specific
+        // course
+        if (courseId != null && !courseId.isEmpty()) {
+            enrollments = enrollments.stream()
+                    .filter(e -> courseId.equals(e.getCourseId()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        return ResponseEntity.ok(enrollments);
     }
 
     @PutMapping("/complete")
-    public ResponseEntity<String> markCourseComplete(@RequestParam String userId, @RequestParam Integer courseId) {
+    public ResponseEntity<String> markCourseComplete(@RequestParam String userId, @RequestParam String courseId) {
         boolean success = enrollmentService.markCourseComplete(userId, courseId);
         if (success) {
             return ResponseEntity.ok("Course marked as completed");
         }
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Enrollment not found");
+    }
+
+    @PutMapping("/progress")
+    public ResponseEntity<Enrollment> updateProgress(
+            @RequestParam String userId,
+            @RequestParam String courseId,
+            @RequestBody java.util.Map<String, Object> progressData) {
+
+        @SuppressWarnings("unchecked")
+        List<String> completedLessons = (List<String>) progressData.get("completedLessons");
+        Integer progress = (Integer) progressData.get("progress");
+
+        Enrollment updated = enrollmentService.updateProgress(userId, courseId, completedLessons, progress);
+        if (updated != null) {
+            return ResponseEntity.ok(updated);
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
 }

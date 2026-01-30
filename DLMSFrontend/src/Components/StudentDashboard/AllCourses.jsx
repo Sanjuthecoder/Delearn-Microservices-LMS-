@@ -58,7 +58,7 @@ export default function AllCourses() {
                     <>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5 }}>
                             {courses.map((course) => (
-                                <Box key={course.courseId} sx={{ flex: '1 1 300px', maxWidth: '380px', minWidth: '280px', width: { xs: '100%', sm: 'auto' } }}>
+                                <Box key={course.id || course.courseId} sx={{ flex: '1 1 300px', maxWidth: '380px', minWidth: '280px', width: { xs: '100%', sm: 'auto' } }}>
                                     <CourseCard course={course} />
                                 </Box>
                             ))}

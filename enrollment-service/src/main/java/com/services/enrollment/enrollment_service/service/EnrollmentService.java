@@ -9,5 +9,7 @@ public interface EnrollmentService {
 
     List<Enrollment> getUserEnrollments(String userId);
 
-    boolean markCourseComplete(String userId, Integer courseId);
+    boolean markCourseComplete(String userId, String courseId);
+
+    Enrollment updateProgress(String userId, String courseId, List<String> completedLessons, Integer progress);
 }

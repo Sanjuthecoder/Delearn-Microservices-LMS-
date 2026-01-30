@@ -31,26 +31,18 @@ const MediaUpload = () => {
                 throw new Error("No authentication token found. Please login.");
             }
 
-            // Using the Gateway URL (3000 to 8080 via proxy or direct)
-            // Assuming the frontend proxy or CORS allows 8080 directly.
-            // Let's try direct Gateway call for now: http://localhost:8080/api/media/upload
-            const response = await fetch('http://localhost:8080/api/media/upload', {
-                method: 'POST',
+            // Using the Gateway URL (Relative path for proxy/consistency)
+            const response = await api.post('/api/media/upload', formData, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData
+                    'Content-Type': 'multipart/form-data'
+                }
             });
 
-            if (!response.ok) {
-                const errText = await response.text();
-                throw new Error(`Upload failed: ${response.statusText} - ${errText}`);
-            }
-
-            const data = await response.json();
-            setResult(data);
+            // Axios throws on 4xx/5xx, so we can assume success if we reach here
+            setResult(response.data);
         } catch (err) {
-            setError(err.message);
+            const errMsg = err.response?.data?.message || err.message || "Upload failed";
+            setError(errMsg);
         } finally {
             setUploading(false);
         }

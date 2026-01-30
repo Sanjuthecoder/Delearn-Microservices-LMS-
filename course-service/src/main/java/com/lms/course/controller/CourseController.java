@@ -27,20 +27,29 @@ public class CourseController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CourseResponse>> getAllCourses() {
-        List<CourseResponse> courses = courseService.getAllCourses();
-        return ResponseEntity.ok(courses);
+    public ResponseEntity<?> getAllCourses() {
+        try {
+            System.out.println("=== GET ALL COURSES REQUEST ===");
+            List<CourseResponse> courses = courseService.getAllCourses();
+            System.out.println("Found " + courses.size() + " courses");
+            return ResponseEntity.ok(courses);
+        } catch (Exception e) {
+            System.err.println("=== ERROR FETCHING COURSES ===");
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error: " + e.getMessage());
+        }
     }
 
     @GetMapping("/{courseId}")
-    public ResponseEntity<CourseResponse> getCourseByCourseId(@PathVariable int courseId) {
-        return courseService.getCourseByCourseId(courseId)
+    public ResponseEntity<CourseResponse> getCourseByCourseId(@PathVariable String courseId) {
+        return courseService.getCourseById(courseId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{courseId}")
-    public ResponseEntity<Void> deleteCourse(@PathVariable int courseId) {
+    public ResponseEntity<Void> deleteCourse(@PathVariable String courseId) {
         if (courseService.deleteCourse(courseId)) {
             return ResponseEntity.noContent().build();
         }
@@ -48,7 +57,8 @@ public class CourseController {
     }
 
     @PutMapping("/{courseId}")
-    public ResponseEntity<Course> updateCourse(@PathVariable int courseId, @RequestBody CourseCreateRequest request) {
+    public ResponseEntity<Course> updateCourse(@PathVariable String courseId,
+            @RequestBody CourseCreateRequest request) {
         Course updatedCourse = courseService.updateCourse(courseId, request);
         if (updatedCourse != null) {
             return ResponseEntity.ok(updatedCourse);

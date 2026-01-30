@@ -59,6 +59,7 @@ public class CourseMapper {
             return null;
 
         CourseResponse response = new CourseResponse();
+        response.setId(course.getId());
         response.setCourseId(course.getCourseId());
         response.setTitle(course.getTitle());
         response.setDescription(course.getDescription());

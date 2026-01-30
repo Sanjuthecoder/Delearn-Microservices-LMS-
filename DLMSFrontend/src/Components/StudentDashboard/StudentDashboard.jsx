@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Box, Typography } from '@mui/material';
-import { useOutletContext, useLocation } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import AllCourses from './AllCourses';
 import MyCourses from './MyCourses';
+import Progress from './Progress';
 import { useCourseContext } from '../../Context/CourseContext';
 
 export default function StudentDashboard() {
@@ -14,7 +15,7 @@ export default function StudentDashboard() {
             {/* Dynamic Header */}
             <Box sx={{ mb: 4 }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: '#111827', mb: 1 }}>
-                    {activeSection === 'all-courses' && 'Browse Catalog'}
+                    {activeSection === 'all-courses' && 'Available Courses'}
                     {activeSection === 'my-courses' && 'My Learning'}
                     {activeSection === 'progress' && 'My Progress'}
                     {activeSection === 'assignments' && 'Assignments'}
@@ -34,8 +35,10 @@ export default function StudentDashboard() {
                 <MyCourses courses={enrolledCourses} />
             )}
 
+            {activeSection === 'progress' && <Progress />}
+
             {/* Placeholder Sections */}
-            {['progress', 'assignments', 'certificates', 'calendar'].includes(activeSection) && (
+            {['assignments', 'certificates', 'calendar'].includes(activeSection) && (
                 <Box
                     sx={{
                         display: 'flex',

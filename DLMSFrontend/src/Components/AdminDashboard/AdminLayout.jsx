@@ -36,7 +36,7 @@ export default function AdminLayout() {
                         <MenuIcon />
                     </IconButton>
                     <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700 }}>
-                        SkillNetra
+                        DLMS Admin
                     </Typography>
                 </Toolbar>
             </AppBar>

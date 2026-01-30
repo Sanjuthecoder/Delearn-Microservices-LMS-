@@ -8,22 +8,25 @@ import api from '../../Service/api';
 import { useCourseContext } from '../../Context/CourseContext';
 
 export default function CourseCard({ course, isEnrolled }) {
-    const { courseId, title, description, instructor, modules } = course;
+    // Prefer String ID (id) from backend, fallback to courseId if legacy
+    const { id, courseId, title, description, instructor, modules, enrollmentStatus } = course;
+    const activeId = id || courseId; // Use the Mongo ID if available
+
     const navigate = useNavigate();
     const { enrollInCourse, isEnrolled: isEnrolledInContext, fetchUserEnrollments } = useCourseContext();
 
     // Local state to handle UI updates immediately
     // If prop is provided (MyCourses), use it. Otherwise check context.
     const [localEnrolled, setLocalEnrolled] = React.useState(
-        isEnrolled !== undefined ? isEnrolled : isEnrolledInContext(courseId)
+        isEnrolled !== undefined ? isEnrolled : isEnrolledInContext(activeId)
     );
 
     // Sync local state if context changes (optional, but good for consistency)
     React.useEffect(() => {
         if (isEnrolled === undefined) {
-            setLocalEnrolled(isEnrolledInContext(courseId));
+            setLocalEnrolled(isEnrolledInContext(activeId));
         }
-    }, [isEnrolledInContext, courseId, isEnrolled]);
+    }, [isEnrolledInContext, activeId, isEnrolled]);
 
 
     // Count module types (Backend structure: modules -> lessons -> type)
@@ -41,7 +44,7 @@ export default function CourseCard({ course, isEnrolled }) {
 
         if (localEnrolled) {
             // Already Enrolled -> Verification Check before Start Learning
-            const verificationUrl = `http://localhost:8080/api/enrollments?userId=${userId}&courseId=${courseId}`;
+            const verificationUrl = `/api/enrollments?userId=${userId}&courseId=${activeId}`;
             console.log("Verifying enrollment before starting:", verificationUrl);
 
             try {
@@ -50,7 +53,7 @@ export default function CourseCard({ course, isEnrolled }) {
 
                 if (response.status === 200 || response.status === 201) {
                     // Success: Navigate to Learning Page
-                    navigate(`/course/${courseId}/learn`);
+                    navigate(`/course/${activeId}/learn`);
                 } else {
                     throw new Error("Verification status not OK");
                 }
@@ -69,7 +72,7 @@ export default function CourseCard({ course, isEnrolled }) {
 
         } else {
             // Not Enrolled -> Navigate to Course Detail Page
-            navigate(`/course/${courseId}`);
+            navigate(`/course/${activeId}`);
         }
     };
 
@@ -83,6 +86,7 @@ export default function CourseCard({ course, isEnrolled }) {
                 border: '1px solid #e5e7eb',
                 overflow: 'hidden',
                 height: '100%',
+                minHeight: '320px', // Standardized minimum height for all cards
                 maxWidth: '380px',
                 boxShadow: 'none',
                 '&:hover': {
@@ -98,16 +102,52 @@ export default function CourseCard({ course, isEnrolled }) {
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     padding: '1rem 1.25rem',
                     color: 'white',
+                    minHeight: '85px', // Fixed header height for consistency
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
                 }}
             >
-                <Typography variant="h6" component="h3" sx={{ fontWeight: 600, fontSize: '1.1rem', mb: 0.5 }}>
+                <Typography
+                    variant="h6"
+                    component="h3"
+                    sx={{
+                        fontWeight: 600,
+                        fontSize: '1.1rem',
+                        mb: 0.5,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        lineHeight: 1.3,
+                    }}
+                >
                     {title}
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, opacity: 0.9 }}>
-                    <SchoolIcon sx={{ fontSize: '0.9rem' }} />
-                    <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
-                        {instructor}
-                    </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, opacity: 0.9 }}>
+                        <SchoolIcon sx={{ fontSize: '0.9rem' }} />
+                        <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+                            {instructor}
+                        </Typography>
+                    </Box>
+                    {enrollmentStatus && (
+                        <Box
+                            sx={{
+                                px: 1,
+                                py: 0.3,
+                                borderRadius: '12px',
+                                bgcolor: enrollmentStatus === 'COMPLETED' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(16, 185, 129, 0.3)',
+                                color: enrollmentStatus === 'COMPLETED' ? '#1e3a8a' : '#065f46',
+                                fontSize: '0.65rem',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                            }}
+                        >
+                            {enrollmentStatus === 'COMPLETED' ? '✓ Completed' : 'Active'}
+                        </Box>
+                    )}
                 </Box>
             </Box>
 

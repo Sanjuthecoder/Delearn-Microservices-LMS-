@@ -19,7 +19,7 @@ export default function MyCourses({ courses = [] }) {
         <Box>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5 }}>
                 {courses.map((course) => (
-                    <Box key={course.courseId} sx={{ flex: '1 1 300px', maxWidth: '380px', minWidth: '280px' }}>
+                    <Box key={course.id || course.courseId} sx={{ flex: '1 1 300px', maxWidth: '380px', minWidth: '280px' }}>
                         {/* Pass isEnrolled true to prompt Start Learning button */}
                         <CourseCard course={course} isEnrolled={true} />
                     </Box>

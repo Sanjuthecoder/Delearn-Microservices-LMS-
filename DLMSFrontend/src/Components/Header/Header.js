@@ -39,10 +39,7 @@ const Header = () => {
     return (
         <header className="header">
             <div className="header-content">
-                <img src="/logo.jpeg" alt="SkillNetra Logo" className="header-logo-left" />
-                <Link to={getLogoDestination()} className="site-title">
-                    SkillNetra
-                </Link>
+                <img src="/logo.jpeg" alt="Logo" className="header-logo-left" />
                 <nav className="header-nav">
                     <Link to="/about">About</Link>
                     <Link to="/contact">Contact</Link>

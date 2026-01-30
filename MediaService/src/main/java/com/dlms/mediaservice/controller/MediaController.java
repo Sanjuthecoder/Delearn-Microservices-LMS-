@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/media")
@@ -23,8 +24,8 @@ public class MediaController {
     private StorageProvider storage;
 
     @PostMapping("/upload")
-    public ResponseEntity<MediaMetadata> upload(@RequestParam("file") MultipartFile file,
-            @RequestHeader(value = "X-User-Role", required = false) String role) throws IOException {
+    public ResponseEntity<?> upload(@RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
 
         // Basic Role Check - Security should ideally be handled by Gateway, but this is
         // a second line of defense
@@ -32,21 +33,56 @@ public class MediaController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        String cid = storage.uploadFile(file);
+        try {
+            System.out.println("=== UPLOAD REQUEST RECEIVED ===");
+            System.out.println("File name: " + file.getOriginalFilename());
+            System.out.println("File size: " + file.getSize());
+            System.out.println("Content type: " + file.getContentType());
 
-        MediaMetadata meta = new MediaMetadata();
-        meta.setFileName(file.getOriginalFilename());
-        meta.setContentType(file.getContentType());
-        meta.setContentIdentifier(cid);
-        meta.setStorageProvider("IPFS");
-        meta.setSize(file.getSize());
+            String cid = storage.uploadFile(file);
+            System.out.println("IPFS CID: " + cid);
 
-        return ResponseEntity.ok(repository.save(meta));
+            MediaMetadata meta = new MediaMetadata();
+            meta.setFileName(file.getOriginalFilename());
+            meta.setContentType(file.getContentType());
+            meta.setContentIdentifier(cid);
+            meta.setStorageProvider("IPFS");
+            meta.setSize(file.getSize());
+
+            MediaMetadata saved = repository.save(meta);
+            System.out.println("Saved to MongoDB with ID: " + saved.getMediaId());
+
+            return ResponseEntity.ok(saved);
+        } catch (Exception e) {
+            System.err.println("=== UPLOAD ERROR ===");
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage(), "type", e.getClass().getName()));
+        }
     }
 
     @GetMapping("/{mediaId}")
     public ResponseEntity<String> getStreamUrl(@PathVariable String mediaId) {
         MediaMetadata meta = repository.findById(mediaId).orElseThrow(() -> new RuntimeException("Media not found"));
         return ResponseEntity.ok(storage.getAccessUrl(meta.getContentIdentifier()));
+    }
+
+    @DeleteMapping("/{mediaId}")
+    public ResponseEntity<?> deleteMedia(@PathVariable String mediaId) {
+        if (repository.existsById(mediaId)) {
+            repository.deleteById(mediaId);
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/download/{mediaId}")
+    public ResponseEntity<Void> downloadMedia(@PathVariable String mediaId) {
+        MediaMetadata meta = repository.findById(mediaId)
+                .orElseThrow(() -> new RuntimeException("Media not found"));
+        String accessUrl = storage.getAccessUrl(meta.getContentIdentifier());
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(java.net.URI.create(accessUrl))
+                .build();
     }
 }

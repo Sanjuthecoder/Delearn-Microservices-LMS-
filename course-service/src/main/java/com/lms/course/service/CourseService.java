@@ -12,9 +12,9 @@ public interface CourseService {
 
     List<CourseResponse> getAllCourses();
 
-    Optional<CourseResponse> getCourseByCourseId(int courseId);
+    Optional<CourseResponse> getCourseById(String courseId);
 
-    boolean deleteCourse(int courseId);
+    boolean deleteCourse(String courseId);
 
-    Course updateCourse(int courseId, CourseCreateRequest request);
+    Course updateCourse(String courseId, CourseCreateRequest request);
 }

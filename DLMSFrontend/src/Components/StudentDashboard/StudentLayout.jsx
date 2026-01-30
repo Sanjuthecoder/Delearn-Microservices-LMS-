@@ -47,7 +47,7 @@ export default function StudentLayout() {
                         <MenuIcon />
                     </IconButton>
                     <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700 }}>
-                        SkillNetra
+                        DLMS
                     </Typography>
                 </Toolbar>
             </AppBar>

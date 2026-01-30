@@ -43,7 +43,8 @@ export default function CourseDetail() {
                 // For now, rely on context logic if available, or fetch from backend
                 const userId = localStorage.getItem('userId');
                 if (userId) {
-                    api.get(`http://localhost:8080/api/enrollments?userId=${userId}&courseId=${response.data.courseId}`)
+                    // Use courseId from URL parameter (MongoDB ID)
+                    api.get(`/api/enrollments?userId=${userId}&courseId=${courseId}`)
                         .then(res => {
                             if (res.status === 200 && res.data && res.data.length > 0) {
                                 setEnrolled(true);
@@ -86,10 +87,10 @@ export default function CourseDetail() {
         }
 
         // Enrollment URL (POST)
-        const enrollmentUrl = `http://localhost:8080/api/enrollments`;
+        const enrollmentUrl = `/api/enrollments`;
         const enrollmentData = {
             userId: userId,
-            courseId: course.courseId
+            courseId: courseId // Use courseId from URL (MongoDB ID)
         };
 
         console.log("Enrollment Request (POST):", enrollmentUrl, enrollmentData);
@@ -118,7 +119,7 @@ export default function CourseDetail() {
             return;
         }
 
-        const verificationUrl = `http://localhost:8080/api/enrollments?userId=${userId}&courseId=${course.courseId}`;
+        const verificationUrl = `/api/enrollments?userId=${userId}&courseId=${courseId}`;
 
         console.log("Verifying enrollment params:", verificationUrl);
 

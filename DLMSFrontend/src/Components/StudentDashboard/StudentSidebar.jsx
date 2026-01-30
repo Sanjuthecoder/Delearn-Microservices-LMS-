@@ -58,7 +58,7 @@ export default function StudentSidebar({ activeSection, setActiveSection, mobile
             <Box sx={{ p: 3, textAlign: 'center', borderBottom: '1px solid #f3f4f6' }}>
                 <img
                     src="/logo.jpeg"
-                    alt="SkillNetra"
+                    alt="DLMS"
                     style={{
                         width: '140px',
                         height: 'auto',
@@ -125,7 +125,16 @@ export default function StudentSidebar({ activeSection, setActiveSection, mobile
                 </Box>
 
                 <ListItemButton
-                    onClick={() => navigate('/login')}
+                    onClick={() => {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('role');
+                        localStorage.removeItem('userName');
+                        localStorage.removeItem('userId');
+                        localStorage.removeItem('email');
+                        localStorage.removeItem('enrolledCourses');
+                        window.dispatchEvent(new Event('storage'));
+                        navigate('/login');
+                    }}
                     sx={{
                         borderRadius: '8px',
                         color: '#ef4444',
