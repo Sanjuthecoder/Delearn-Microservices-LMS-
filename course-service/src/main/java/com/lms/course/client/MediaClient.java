@@ -9,4 +9,7 @@ public interface MediaClient {
 
     @DeleteMapping("/api/media/{mediaId}")
     void deleteMedia(@PathVariable("mediaId") String mediaId);
+
+    @org.springframework.web.bind.annotation.PutMapping("/api/media/{mediaId}/course/{courseId}")
+    void assignCourse(@PathVariable("mediaId") String mediaId, @PathVariable("courseId") String courseId);
 }

@@ -178,11 +178,7 @@ export default function AdminCourseList() {
                             }}>
                                 <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                                        <Chip
-                                            label={`ID: ${course.courseId}`}
-                                            size="small"
-                                            sx={{ bgcolor: 'rgba(102, 126, 234, 0.1)', fontWeight: 600, color: '#667eea', fontSize: '0.7rem' }}
-                                        />
+                                        {/* Chip Removed */}
                                         {/* Placeholder for difficulty/category if available */}
                                     </Box>
                                     <Typography variant="h6" fontWeight={700} gutterBottom sx={{

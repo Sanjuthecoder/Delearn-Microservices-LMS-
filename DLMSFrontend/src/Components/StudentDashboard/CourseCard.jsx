@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { Card, CardContent, CardActions, Button, Chip, Box, Typography } from '@mui/material';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
@@ -38,7 +39,7 @@ export default function CourseCard({ course, isEnrolled }) {
         const userId = localStorage.getItem('userId');
 
         if (!userId) {
-            alert("User not logged in.");
+            toast.warning("Please log in to enroll.");
             return;
         }
 
@@ -59,7 +60,7 @@ export default function CourseCard({ course, isEnrolled }) {
                 }
             } catch (error) {
                 console.error("Verification Failed:", error);
-                alert("Verification Failed: You are no longer enrolled in this course.");
+                toast.error("Verification Failed: You are no longer enrolled.");
 
                 // Revert State: Flip back to "View Details"
                 setLocalEnrolled(false);
@@ -71,7 +72,8 @@ export default function CourseCard({ course, isEnrolled }) {
             }
 
         } else {
-            // Not Enrolled -> Navigate to Course Detail Page
+            // Not Enrolled -> Navigate to Course Detail Page (enrollment happens there)
+            // Or if you want direct enrollment here:
             navigate(`/course/${activeId}`);
         }
     };

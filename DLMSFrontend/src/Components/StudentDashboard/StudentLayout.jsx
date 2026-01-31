@@ -3,6 +3,7 @@ import { Box, IconButton, Toolbar, AppBar, Typography, useTheme, useMediaQuery }
 import { Outlet, useLocation } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
 import StudentSidebar from './StudentSidebar';
+import StudentChatbot from './StudentChatbot';
 
 const drawerWidth = 260;
 
@@ -70,6 +71,9 @@ export default function StudentLayout() {
             >
                 <Outlet context={{ activeSection, setActiveSection }} />
             </Box>
+
+            {/* AI Chatbot Floating Component */}
+            <StudentChatbot />
         </Box>
     );
 }

@@ -30,7 +30,9 @@ public class CourseServiceImpl implements CourseService {
     @Override
     public Course createCourse(CourseCreateRequest request) {
         Course course = CourseMapper.toEntity(request);
-        return courseRepository.save(course);
+        Course savedCourse = courseRepository.save(course);
+        syncMedia(savedCourse);
+        return savedCourse;
     }
 
     @Override
@@ -94,8 +96,35 @@ public class CourseServiceImpl implements CourseService {
             updatedData.setCreatedAt(existingCourse.getCreatedAt());
             updatedData.setUpdatedAt(LocalDateTime.now());
 
-            return courseRepository.save(updatedData);
+            Course savedCourse = courseRepository.save(updatedData);
+            syncMedia(savedCourse);
+            return savedCourse;
         }
         return null;
+    }
+
+    private void syncMedia(Course course) {
+        if (course.getModules() == null)
+            return;
+
+        String courseId = course.getId();
+        if (courseId == null)
+            courseId = String.valueOf(course.getCourseId());
+
+        for (CourseModule module : course.getModules()) {
+            if (module.getLessons() != null) {
+                for (Lesson lesson : module.getLessons()) {
+                    if (lesson.getMediaId() != null && !lesson.getMediaId().isEmpty()) {
+                        try {
+                            mediaClient.assignCourse(lesson.getMediaId(), courseId);
+                            System.out.println("Linked media " + lesson.getMediaId() + " to course " + courseId);
+                        } catch (Exception e) {
+                            System.err.println(
+                                    "Failed to link media " + lesson.getMediaId() + " to course: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+        }
     }
 }

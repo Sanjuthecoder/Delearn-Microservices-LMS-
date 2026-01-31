@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Login from "./Components/Login/Login";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useState } from "react";
 import About from "./Components/About/About";
 import Contact from "./Components/Contact/Contact";
@@ -35,6 +37,7 @@ export default function App() {
   return (
     <CourseProvider>
       <ScrollToTop />
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
       <Routes>
         <Route path="/login" element={<><Header /><Login /><Footer /></>} />
         <Route path="/" element={

@@ -45,7 +45,7 @@ function Login() {
           const token = data.token;
           const role = data.role; // Extract role from response
           const userId = data.userId;
-          const name = data.name;
+          const name = data.userName; // FIX: LoginResponse uses userName, not name
           const email = data.email;
 
           console.log("Login successful! Token:", token, "Role:", role, "User:", name);

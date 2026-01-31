@@ -56,6 +56,15 @@ public class MediaController {
         } catch (Exception e) {
             System.err.println("=== UPLOAD ERROR ===");
             e.printStackTrace();
+            // DEBUG: Write error to file so we can see it
+            try (java.io.PrintWriter pw = new java.io.PrintWriter(
+                    new java.io.FileWriter("d:\\DLMS\\media_upload_error.txt", true))) {
+                pw.println("=== ERROR AT " + java.time.LocalDateTime.now() + " ===");
+                e.printStackTrace(pw);
+                pw.println("--------------------------------------------------");
+            } catch (java.io.IOException ioe) {
+                ioe.printStackTrace();
+            }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", e.getMessage(), "type", e.getClass().getName()));
         }
@@ -84,5 +93,16 @@ public class MediaController {
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(java.net.URI.create(accessUrl))
                 .build();
+    }
+
+    @PutMapping("/{mediaId}/course/{courseId}")
+    public ResponseEntity<?> assignCourse(@PathVariable String mediaId, @PathVariable String courseId) {
+        return repository.findById(mediaId)
+                .map(media -> {
+                    media.setCourseId(courseId);
+                    repository.save(media);
+                    return ResponseEntity.ok().build();
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 }

@@ -192,16 +192,15 @@ export default function CoursePlayer() {
         }
 
         try {
-            const downloadUrl = `http://localhost:8080/api/media/download/${mediaId}`;
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = `${title}.mp4`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // Use the configurable API Gateway URL from environment variable
+            // It routes through Gateway: /api/media/download/{mediaId}
+            const apiBase = process.env.REACT_APP_API_GATEWAY_URL || 'http://localhost:8080';
+            const downloadUrl = `${apiBase}/api/media/download/${mediaId}`;
+            // Use window.open to trigger the browser's download behavior
+            window.open(downloadUrl, '_blank');
         } catch (error) {
-            console.error('Download failed:', error);
-            alert('Failed to download the resource.');
+            console.error('Download trigger failed:', error);
+            alert('Failed to initiate download.');
         }
     };
 
@@ -259,16 +258,13 @@ export default function CoursePlayer() {
                     position: 'relative',
                     overflow: 'hidden' // Ensure no scrollbars
                 }}>
-                    {/* Video Container - Fills available space */}
+                    {/* Video Container - Responsive 16:9 Aspect Ratio */}
                     <Box sx={{
-                        flexGrow: 1,
-                        position: 'relative',
                         width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'stretch',
-                        justifyContent: 'stretch',
-                        bgcolor: 'black'
+                        position: 'relative',
+                        paddingTop: '56.25%', // 16:9 Aspect Ratio
+                        bgcolor: 'black',
+                        alignSelf: 'center' // Center vertically if there's extra space
                     }}>
                         {activeLesson ? (
                             <iframe
@@ -278,14 +274,27 @@ export default function CoursePlayer() {
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                 allowFullScreen
                                 style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
                                     width: '100%',
                                     height: '100%',
-                                    border: 'none',
-                                    display: 'block'
+                                    border: 'none'
                                 }}
                             ></iframe>
                         ) : (
-                            <Typography color="white">Select a lesson to start</Typography>
+                            <Box sx={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <Typography color="white">Select a lesson to start</Typography>
+                            </Box>
                         )}
                     </Box>
 

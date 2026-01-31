@@ -14,6 +14,19 @@ replay_pid*
 node_modules/
 build/
 .env
+.env.local
+.env.production
+.env.*.local
+
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.egg-info/
 
 # OS
 .DS_Store
@@ -21,3 +34,23 @@ Thumbs.db
 
 data/
 tmp/
+
+# Ensure .env files are never committed (but keep .env.example)
+.env
+*.env
+!.env.example
+
+# Discussion and temporary files (not for production)
+discussion.txt
+discussion
+eureka_discussion.md
+*.resolved
+
+# Test files
+test_*.txt
+test_*.ps1
+
+# Compile logs
+*_compile_error.log
+*_startup.log
+compile_log.txt

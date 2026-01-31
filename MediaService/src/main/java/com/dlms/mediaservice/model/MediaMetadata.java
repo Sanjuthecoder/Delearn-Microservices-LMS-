@@ -16,6 +16,7 @@ public class MediaMetadata {
     private String storageProvider; // e.g., "IPFS" or "S3"
     private String contentIdentifier; // The CID hash for IPFS or Key for S3
     private String uploadedBy; // Admin ID
+    private String courseId; // Linked Course ID
     private LocalDateTime createdAt = LocalDateTime.now();
 
     // Additional field for independent model adaptation can be added here

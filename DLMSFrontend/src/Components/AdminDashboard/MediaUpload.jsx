@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import api from '../../Service/api';
 
 const MediaUpload = () => {
     const [file, setFile] = useState(null);

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import "./Signup.css"
-// You would likely have a CSS file for styling
-// import './Signup.css'; 
+import api from '../../Service/api';
 
 function Signup() {
   // State for form fields
@@ -13,6 +12,7 @@ function Signup() {
   // State for feedback and loading
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null); // Add success state
 
   const navigate = useNavigate();
 

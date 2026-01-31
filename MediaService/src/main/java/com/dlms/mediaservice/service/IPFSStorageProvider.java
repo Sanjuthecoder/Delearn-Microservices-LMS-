@@ -1,47 +1,67 @@
 package com.dlms.mediaservice.service;
 
-import io.ipfs.api.IPFS;
-import io.ipfs.api.MerkleNode;
-import io.ipfs.api.NamedStreamable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.*;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import java.util.Map;
 
-import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 
 @Service
 public class IPFSStorageProvider implements StorageProvider {
 
-    @Value("${ipfs.api.host}")
-    private String ipfsHost;
+    @Value("${pinata.api.key}")
+    private String pinataApiKey;
 
-    @Value("${ipfs.api.port}")
-    private int ipfsPort;
+    @Value("${pinata.secret.api.key}")
+    private String pinataSecretApiKey;
 
-    private IPFS ipfs;
+    private final String PINATA_UPLOAD_URL = "https://api.pinata.cloud/pinning/pinFileToIPFS";
+    private final String GATEWAY_URL = "https://gateway.pinata.cloud/ipfs/";
 
-    @PostConstruct
-    public void init() {
-        // Initialize IPFS Connection
+    @Override
+    public String uploadFile(MultipartFile file) throws IOException {
+        // Prepare Headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        headers.set("pinata_api_key", pinataApiKey);
+        headers.set("pinata_secret_api_key", pinataSecretApiKey);
+
+        // Prepare Body
+        // Prepare Body
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        // FIX: Use ByteArrayResource to ensure filename is passed correctly to Pinata
+        body.add("file", new org.springframework.core.io.ByteArrayResource(file.getBytes()) {
+            @Override
+            public String getFilename() {
+                return file.getOriginalFilename();
+            }
+        });
+
+        // Create Request
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        // Send POST Request using RestTemplate
+        RestTemplate restTemplate = new RestTemplate();
         try {
-            this.ipfs = new IPFS("/ip4/" + ipfsHost + "/tcp/" + ipfsPort);
+            ResponseEntity<Map> response = restTemplate.postForEntity(PINATA_UPLOAD_URL, requestEntity, Map.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return (String) response.getBody().get("IpfsHash");
+            } else {
+                throw new IOException("Failed to upload to Pinata: " + response.getStatusCode());
+            }
         } catch (Exception e) {
-            throw new RuntimeException("Failed to connect to IPFS Node. Ensure IPFS Desktop or Daemon is running.", e);
+            throw new IOException("Error communicating with Pinata API", e);
         }
     }
 
     @Override
-    public String uploadFile(MultipartFile file) throws IOException {
-        NamedStreamable.InputStreamWrapper is = new NamedStreamable.InputStreamWrapper(file.getInputStream());
-        MerkleNode addResult = ipfs.add(is).get(0);
-        return addResult.hash.toString(); // Returns the CID
-    }
-
-    @Override
     public String getAccessUrl(String cid) {
-        // Using public gateway for example, can be configured to local or dedicated
-        // gateway
-        return "http://127.0.0.1:8084/ipfs/" + cid;
+        return GATEWAY_URL + cid;
     }
 }

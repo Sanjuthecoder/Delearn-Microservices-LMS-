@@ -1,8 +1,9 @@
 import axios from 'axios';
 
-// Create an Axios instance
+// Create an Axios instance with configurable base URL
+// In production, set REACT_APP_API_GATEWAY_URL in your .env file
 const api = axios.create({
-    baseURL: "http://localhost:8080", // Gateway Port
+    baseURL: process.env.REACT_APP_API_GATEWAY_URL || "http://localhost:8080",
 });
 
 // Add a request interceptor
