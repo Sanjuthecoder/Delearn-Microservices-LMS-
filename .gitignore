@@ -58,3 +58,5 @@ compile_log.txt
 # Local startup scripts with secrets (keep local only)
 start_all_services.ps1
 set_env_vars.ps1
+SECURITY_INCIDENT.md
+
