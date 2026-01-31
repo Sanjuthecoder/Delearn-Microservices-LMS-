@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # Service Discovery
+  eureka-server:
+    build: ./EurekaServer
+    container_name: dlms-eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - dlms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # API Gateway
+  gateway:
+    build: ./Gateway
+    container_name: dlms-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - AUTH_SERVICE_URL=http://auth-service:2000
+      - ENROLLMENT_SERVICE_URL=http://enrollment-service:8082
+      - COURSE_SERVICE_URL=http://course-service:8081
+      - MEDIA_SERVICE_URL=http://media-service:8085
+      - CHATBOT_SERVICE_URL=http://chatbot-service:8000
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - dlms-network
+
+  # Auth Service
+  auth-service:
+    build: ./AuthService
+    container_name: dlms-auth
+    ports:
+      - "2000:2000"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - TIDB_URL=${TIDB_URL}
+      - TIDB_USER=${TIDB_USER}
+      - TIDB_PASSWORD=${TIDB_PASSWORD}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - dlms-network
+
+  # Course Service
+  course-service:
+    build: ./course-service
+    container_name: dlms-course
+    ports:
+      - "8081:8081"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - COURSE_MONGODB_URI=${COURSE_MONGODB_URI}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - dlms-network
+
+  # Media Service
+  media-service:
+    build: ./MediaService
+    container_name: dlms-media
+    ports:
+      - "8085:8085"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - MEDIA_MONGODB_URI=${MEDIA_MONGODB_URI}
+      - PINATA_API_KEY=${PINATA_API_KEY}
+      - PINATA_SECRET_API_KEY=${PINATA_SECRET_API_KEY}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - dlms-network
+
+  # Enrollment Service
+  enrollment-service:
+    build: ./enrollment-service
+    container_name: dlms-enrollment
+    ports:
+      - "8082:8082"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - TIDB_URL=${TIDB_URL}
+      - TIDB_USER=${TIDB_USER}
+      - TIDB_PASSWORD=${TIDB_PASSWORD}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - dlms-network
+
+  # ChatBot Service
+  chatbot-service:
+    build: ./fast-api
+    container_name: dlms-chatbot
+    ports:
+      - "8000:8000"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka
+      - API_GATEWAY_URL=http://gateway:8080
+      - HF_TOKEN=${HF_TOKEN}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - dlms-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./DLMSFrontend
+      args:
+        - REACT_APP_API_GATEWAY_URL=${REACT_APP_API_GATEWAY_URL}
+    container_name: dlms-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
+    networks:
+      - dlms-network
+
+networks:
+  dlms-network:
+    driver: bridge

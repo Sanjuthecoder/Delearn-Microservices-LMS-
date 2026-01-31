@@ -39,6 +39,9 @@ tmp/
 .env
 *.env
 !.env.example
+!Gateway/.env.example
+!fast-api/.env.example
+!DLMSFrontend/.env.example
 
 # Discussion and temporary files (not for production)
 discussion.txt
