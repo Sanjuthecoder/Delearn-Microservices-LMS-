@@ -54,3 +54,7 @@ test_*.ps1
 *_compile_error.log
 *_startup.log
 compile_log.txt
+
+# Local startup scripts with secrets (keep local only)
+start_all_services.ps1
+set_env_vars.ps1
