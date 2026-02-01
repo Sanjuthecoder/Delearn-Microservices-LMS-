@@ -2,7 +2,7 @@
 FROM node:18-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 ARG REACT_APP_API_GATEWAY_URL
 ENV REACT_APP_API_GATEWAY_URL=$REACT_APP_API_GATEWAY_URL

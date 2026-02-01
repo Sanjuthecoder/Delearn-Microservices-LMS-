@@ -1,9 +1,13 @@
-FROM openjdk:17-jdk-slim
+# Build stage
+FROM maven:3.9-amazoncorretto-17-alpine AS build
 WORKDIR /app
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
-RUN ./mvnw dependency:go-offline
+COPY pom.xml .
 COPY src ./src
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests -o || mvn clean package -DskipTests
+
+# Runtime stage
+FROM amazoncorretto:17-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8081
-CMD ["java", "-jar", "target/course-service-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "app.jar"]
