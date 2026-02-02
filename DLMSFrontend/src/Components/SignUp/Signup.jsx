@@ -37,7 +37,7 @@ function Signup() {
     // --- Backend API Call ---
     try {
       // Use api helper for consistent Gateway routing and interceptors
-      const response = await api.post('/api/auth/newUser', signupData);
+      const response = await api.post('/api/auth/register', signupData);
 
       if (response.status === 200 || response.status === 201) {
         setSuccess("Account created successfully! Redirecting...");
